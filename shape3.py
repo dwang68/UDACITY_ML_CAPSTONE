@@ -14,13 +14,14 @@ import argparse
 import sys
 import numpy as np
 import pandas as pd
+import datetime
 
 
 import tensorflow as tf
 
 FLAGS = None
 num_of_steps = 6000
-batch_size = 10
+batch_size = 50
 
 
 def deepnn(x):
@@ -118,21 +119,33 @@ def main(_):
 
     # Build the graph for the deep net
     y_conv, keep_prob = deepnn(x)
+    with tf.name_scope('cross_entropy'):
+        cross_entropy = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
+        tf.summary.scalar('cross_entropy', cross_entropy)
 
-    cross_entropy = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
     train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
     correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    with tf.name_scope('accuracy'):
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        tf.summary.scalar('accuracy', accuracy)
+
+
+
 
     with tf.Session() as sess:
+        merged = tf.summary.merge_all()
+        train_writer = tf.summary.FileWriter(FLAGS.log_dir + '/train',
+                                         sess.graph)
+        test_writer = tf.summary.FileWriter(FLAGS.log_dir + '/test')
         sess.run(tf.global_variables_initializer())
         for i in range(num_of_steps):
             batch = shape_set.next_batch_train(batch_size)
 
             if i % 100 == 0:
-                train_accuracy = accuracy.eval(feed_dict={
+                summary, train_accuracy = sess.run([merged, accuracy], feed_dict={
                     x: batch[0], y_: batch[1], keep_prob: 1.0})
+                train_writer.add_summary(summary, i)
                 print('step %d, training accuracy %g' % (i, train_accuracy))
             train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.8})
 
@@ -177,23 +190,88 @@ class shape_set_input(object):
 
             #The 1025 number represents the shape: 0=rectangle, 1=ellipse and 2=triangle
             shape_type_df_original = data_df.iloc[:, 1024]
+
             if "train" in file_name:
+
+                data_pixels_df_original_roll_left = np.roll(data_pixels_df_original.reshape(10000,32,32), -3, axis=2).reshape(10000,1024)
+                data_pixels_df_original_roll_right = np.roll(data_pixels_df_original.reshape(10000,32,32), 3, axis=2).reshape(10000,1024)
+                data_pixels_df_original_roll_up = np.roll(data_pixels_df_original.reshape(10000,32,32), -3, axis=1).reshape(10000,1024)
+                data_pixels_df_original_roll_down = np.roll(data_pixels_df_original.reshape(10000,32,32), 3, axis=1).reshape(10000,1024)
+
                 data_pixels_df_flip1 = np.flip(data_pixels_df_original.reshape(10000, 32, 32), 1).reshape(10000, 1024)
+                data_pixels_df_flip1_roll_left = np.roll(data_pixels_df_flip1.reshape(10000,32,32), -3, axis=2).reshape(10000,1024)
+                data_pixels_df_flip1_roll_right = np.roll(data_pixels_df_flip1.reshape(10000,32,32), 3, axis=2).reshape(10000,1024)
+                data_pixels_df_flip1_roll_up = np.roll(data_pixels_df_flip1.reshape(10000,32,32), -3, axis=1).reshape(10000,1024)
+                data_pixels_df_flip1_roll_down = np.roll(data_pixels_df_flip1.reshape(10000,32,32), 3, axis=1).reshape(10000,1024)
+
+
                 data_pixels_df_flip2 = np.flip(data_pixels_df_original.reshape(10000, 32, 32), 2).reshape(10000, 1024)
+                data_pixels_df_flip2_roll_left = np.roll(data_pixels_df_flip2.reshape(10000,32,32), -3, axis=2).reshape(10000,1024)
+                data_pixels_df_flip2_roll_right = np.roll(data_pixels_df_flip2.reshape(10000,32,32), 3, axis=2).reshape(10000,1024)
+                data_pixels_df_flip2_roll_up = np.roll(data_pixels_df_flip2.reshape(10000,32,32), -3, axis=1).reshape(10000,1024)
+                data_pixels_df_flip2_roll_down = np.roll(data_pixels_df_flip2.reshape(10000,32,32), 3, axis=1).reshape(10000,1024)
+
                 data_pixels_df_flip3 = np.flip(data_pixels_df_flip1.reshape(10000, 32, 32), 2).reshape(10000, 1024)
-                data_pixels_df = np.concatenate((data_pixels_df_original, data_pixels_df_flip1, data_pixels_df_flip2,  data_pixels_df_flip3), axis=0)
-                shape_type_df = np.concatenate((shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original), axis=0)
-                b = np.zeros((40000, 3))
-                b[np.arange(40000), shape_type_df] = 1
+                data_pixels_df_flip3_roll_left = np.roll(data_pixels_df_flip3.reshape(10000,32,32), -3, axis=2).reshape(10000,1024)
+                data_pixels_df_flip3_roll_right = np.roll(data_pixels_df_flip3.reshape(10000,32,32), 3, axis=2).reshape(10000,1024)
+                data_pixels_df_flip3_roll_up = np.roll(data_pixels_df_flip3.reshape(10000,32,32), -3, axis=1).reshape(10000,1024)
+                data_pixels_df_flip3_roll_down = np.roll(data_pixels_df_flip3.reshape(10000,32,32), 3, axis=1).reshape(10000,1024)
+
+                data_pixels_df = np.concatenate((data_pixels_df_original, data_pixels_df_flip1, data_pixels_df_flip2,  data_pixels_df_flip3,
+                                                 data_pixels_df_original_roll_left, data_pixels_df_original_roll_right, data_pixels_df_original_roll_up, data_pixels_df_original_roll_down,
+                                                 data_pixels_df_flip1_roll_left, data_pixels_df_flip1_roll_right, data_pixels_df_flip1_roll_up, data_pixels_df_flip1_roll_down,
+                                                 data_pixels_df_flip2_roll_left, data_pixels_df_flip2_roll_right, data_pixels_df_flip2_roll_up, data_pixels_df_flip2_roll_down,
+                                                 data_pixels_df_flip3_roll_left, data_pixels_df_flip3_roll_right, data_pixels_df_flip3_roll_up, data_pixels_df_flip3_roll_down), axis=0)
+
+                shape_type_df = np.concatenate((shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original), axis=0)
+
+                #shape_type_df = np.tile(shape_type_df_original.as_matrix().reshape(shape_type_df_original.shape[0], 1), (8, 1))
+                b = np.zeros((200000, 3))
+                b[np.arange(200000), shape_type_df] = 1
                 self.train = [data_pixels_df, b]
             elif "valid" in file_name:
+                data_pixels_df_original_roll_left = np.roll(data_pixels_df_original.reshape(5000,32,32), -3, axis=2).reshape(5000,1024)
+                data_pixels_df_original_roll_right = np.roll(data_pixels_df_original.reshape(5000,32,32), 3, axis=2).reshape(5000,1024)
+                data_pixels_df_original_roll_up = np.roll(data_pixels_df_original.reshape(5000,32,32), -3, axis=1).reshape(5000,1024)
+                data_pixels_df_original_roll_down = np.roll(data_pixels_df_original.reshape(5000,32,32), 3, axis=1).reshape(5000,1024)
+
                 data_pixels_df_flip1 = np.flip(data_pixels_df_original.reshape(5000, 32, 32), 1).reshape(5000, 1024)
+                data_pixels_df_flip1_roll_left = np.roll(data_pixels_df_flip1.reshape(5000,32,32), -3, axis=2).reshape(5000,1024)
+                data_pixels_df_flip1_roll_right = np.roll(data_pixels_df_flip1.reshape(5000,32,32), 3, axis=2).reshape(5000,1024)
+                data_pixels_df_flip1_roll_up = np.roll(data_pixels_df_flip1.reshape(5000,32,32), -3, axis=1).reshape(5000,1024)
+                data_pixels_df_flip1_roll_down = np.roll(data_pixels_df_flip1.reshape(5000,32,32), 3, axis=1).reshape(5000,1024)
+
+
                 data_pixels_df_flip2 = np.flip(data_pixels_df_original.reshape(5000, 32, 32), 2).reshape(5000, 1024)
+                data_pixels_df_flip2_roll_left = np.roll(data_pixels_df_flip2.reshape(5000,32,32), -3, axis=2).reshape(5000,1024)
+                data_pixels_df_flip2_roll_right = np.roll(data_pixels_df_flip2.reshape(5000,32,32), 3, axis=2).reshape(5000,1024)
+                data_pixels_df_flip2_roll_up = np.roll(data_pixels_df_flip2.reshape(5000,32,32), -3, axis=1).reshape(5000,1024)
+                data_pixels_df_flip2_roll_down = np.roll(data_pixels_df_flip2.reshape(5000,32,32), 3, axis=1).reshape(5000,1024)
+
                 data_pixels_df_flip3 = np.flip(data_pixels_df_flip1.reshape(5000, 32, 32), 2).reshape(5000, 1024)
-                data_pixels_df = np.concatenate((data_pixels_df_original, data_pixels_df_flip1, data_pixels_df_flip2,  data_pixels_df_flip3), axis=0)
-                shape_type_df = np.concatenate((shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original), axis=0)
-                b = np.zeros((20000, 3))
-                b[np.arange(20000), shape_type_df] = 1
+                data_pixels_df_flip3_roll_left = np.roll(data_pixels_df_flip3.reshape(5000,32,32), -3, axis=2).reshape(5000,1024)
+                data_pixels_df_flip3_roll_right = np.roll(data_pixels_df_flip3.reshape(5000,32,32), 3, axis=2).reshape(5000,1024)
+                data_pixels_df_flip3_roll_up = np.roll(data_pixels_df_flip3.reshape(5000,32,32), -3, axis=1).reshape(5000,1024)
+                data_pixels_df_flip3_roll_down = np.roll(data_pixels_df_flip3.reshape(5000,32,32), 3, axis=1).reshape(5000,1024)
+
+                data_pixels_df = np.concatenate((data_pixels_df_original, data_pixels_df_flip1, data_pixels_df_flip2,  data_pixels_df_flip3,
+                                             data_pixels_df_original_roll_left, data_pixels_df_original_roll_right, data_pixels_df_original_roll_up, data_pixels_df_original_roll_down,
+                                             data_pixels_df_flip1_roll_left, data_pixels_df_flip1_roll_right, data_pixels_df_flip1_roll_up, data_pixels_df_flip1_roll_down,
+                                             data_pixels_df_flip2_roll_left, data_pixels_df_flip2_roll_right, data_pixels_df_flip2_roll_up, data_pixels_df_flip2_roll_down,
+                                             data_pixels_df_flip3_roll_left, data_pixels_df_flip3_roll_right, data_pixels_df_flip3_roll_up, data_pixels_df_flip3_roll_down), axis=0)
+
+                shape_type_df = np.concatenate((shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original,
+                                                shape_type_df_original, shape_type_df_original, shape_type_df_original, shape_type_df_original), axis=0)
+            #shape_type_df = np.tile(shape_type_df_original.as_matrix().reshape(shape_type_df_original.shape[0], 1), (8, 1))
+                b = np.zeros((100000, 3))
+                b[np.arange(100000), shape_type_df] = 1
                 self.valid = [data_pixels_df, b]
                 self.train = [np.concatenate((self.train[0], self.valid[0]), 0), np.concatenate((self.train[1], self.valid[1]), 0)]
             else:
@@ -231,9 +309,11 @@ class shape_set_input(object):
 
 
 if __name__ == '__main__':
+    print("before" + str(datetime.datetime.now()))
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', type=str,
-                        default='/tmp/tensorflow/shapeset/input_data',
-                        help='Directory for storing input data')
+    parser.add_argument('--log_dir', type=str,
+                        default='/tmp/tensorflow/shapeset/logs',
+                        help='Directory for storing summary data')
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+    print("after" + str(datetime.datetime.now()))
