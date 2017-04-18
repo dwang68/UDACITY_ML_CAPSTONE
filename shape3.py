@@ -153,7 +153,7 @@ def main(_):
             x: shape_set.test[0], y_: shape_set.test[1], keep_prob: 1.0}))
 
 #Convert the images to greyscale images as the shape is of one color and the background is of another
-def toGreyscale(x):
+def normalize(x):
     b = x != x[0]
     c = x == x[0]
     x[b] = 0.5
@@ -163,7 +163,7 @@ class shape_set_input(object):
     """A class to parse the dataset"""
 
     def __init__(self):
-        self.file_names = ["shapeset2_1cspo_2_3.10000.train.amat", "shapeset2_1cspo_2_3.5000.valid.amat", "shapeset2_1cspo_2_3.5000.test.amat"]
+        self.file_names = ["./input/shapeset2_1cspo_2_3.10000.train.amat", "./input/shapeset2_1cspo_2_3.5000.valid.amat", "./input/shapeset2_1cspo_2_3.5000.test.amat"]
         self.train = None
         self.valid = None
         self.test = None
@@ -185,7 +185,7 @@ class shape_set_input(object):
             #The first 1024 represents the gray tone of the pixel between 0 and 1 ( 32 * 32 )
             data_pixels_df_original = data_df.iloc[:, 0:1024].as_matrix()
             print(data_pixels_df_original.shape)
-            np.apply_along_axis(toGreyscale, 1, data_pixels_df_original)
+            np.apply_along_axis(normalize, 1, data_pixels_df_original)
 
 
             #The 1025 number represents the shape: 0=rectangle, 1=ellipse and 2=triangle
