@@ -23,6 +23,81 @@ FLAGS = None
 num_of_steps = 6000
 batch_size = 50
 
+def variable_summaries(var):
+    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+    with tf.name_scope('summaries'):
+        mean = tf.reduce_mean(var)
+        tf.summary.scalar('mean', mean)
+        with tf.name_scope('stddev'):
+            stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+        tf.summary.scalar('stddev', stddev)
+        tf.summary.scalar('max', tf.reduce_max(var))
+        tf.summary.scalar('min', tf.reduce_min(var))
+        tf.summary.histogram('histogram', var)
+
+def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
+    """Reusable code for making a simple neural net layer.
+
+    It does a matrix multiply, bias add, and then uses relu to nonlinearize.
+    It also sets up name scoping so that the resultant graph is easy to read,
+    and adds a number of summary ops.
+    """
+    # Adding a name scope ensures logical grouping of the layers in the graph.
+    with tf.name_scope(layer_name):
+        # This Variable will hold the state of the weights for the layer
+        input_tensor = tf.reshape(input_tensor, [-1, input_dim])
+        with tf.name_scope('weights'):
+            weights = weight_variable([input_dim, output_dim])
+            variable_summaries(weights)
+        with tf.name_scope('biases'):
+            biases = bias_variable([output_dim])
+            variable_summaries(biases)
+        with tf.name_scope('Wx_plus_b'):
+            preactivate = tf.matmul(input_tensor, weights) + biases
+            tf.summary.histogram('pre_activations', preactivate)
+        activations = act(preactivate, name='activation')
+        tf.summary.histogram('activations', activations)
+        return activations
+
+def nn_layer2(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
+    """Reusable code for making a simple neural net layer.
+
+    It does a matrix multiply, bias add, and then uses relu to nonlinearize.
+    It also sets up name scoping so that the resultant graph is easy to read,
+    and adds a number of summary ops.
+    """
+    # Adding a name scope ensures logical grouping of the layers in the graph.
+    with tf.name_scope(layer_name):
+        # This Variable will hold the state of the weights for the layer
+        with tf.name_scope('weights'):
+            weights = weight_variable([input_dim, output_dim])
+            variable_summaries(weights)
+        with tf.name_scope('biases'):
+            biases = bias_variable([output_dim])
+            variable_summaries(biases)
+        with tf.name_scope('Wx_plus_b'):
+            preactivate = tf.matmul(input_tensor, weights) + biases
+            tf.summary.histogram('pre_activations', preactivate)
+        activations = act(preactivate, name='activation')
+        tf.summary.histogram('activations', activations)
+        return activations
+
+def convo_layer(input_tensor, patch_width, patch_height, channel_num, filter_num , layer_name, act=tf.nn.relu):
+    with tf.name_scope(layer_name):
+        # This Variable will hold the state of the weights for the layer
+        with tf.name_scope('weights'):
+            weights = weight_variable([patch_width, patch_height, channel_num, filter_num])
+            variable_summaries(weights)
+        with tf.name_scope('biases'):
+            biases = bias_variable([filter_num])
+            variable_summaries(biases)
+        with tf.name_scope('Wx_plus_b'):
+            preactivate = conv2d(input_tensor, weights) + biases
+            tf.summary.histogram('pre_activations', preactivate)
+        activations = act(preactivate, name='activation')
+        tf.summary.histogram('activations', activations)
+        return activations
+
 
 def deepnn(x):
     """deepnn builds the graph for a deep net for classifying shapes.
@@ -42,28 +117,24 @@ def deepnn(x):
     x_image = tf.reshape(x, [-1, 32, 32, 1])
 
     # First convolutional layer - maps one grayscale image to 32 feature maps.
-    W_conv1 = weight_variable([5, 5, 1, 32])
-    b_conv1 = bias_variable([32])
-    h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+    h_conv1 = convo_layer(x_image, 5, 5, 1, 32, "ConvLayer1")
 
     # Pooling layer - downsamples by 2X.
-    h_pool1 = max_pool_2x2(h_conv1)
+    with tf.name_scope("PoolingLayer1"):
+        h_pool1 = max_pool_2x2(h_conv1)
+        tf.summary.histogram('pooling activations', h_pool1)
 
     # Second convolutional layer -- maps 32 feature maps to 64.
-    W_conv2 = weight_variable([5, 5, 32, 64])
-    b_conv2 = bias_variable([64])
-    h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
+    h_conv2 = convo_layer(h_pool1, 5, 5, 32, 64, "ConvLayer2")
 
     # Second pooling layer.
-    h_pool2 = max_pool_2x2(h_conv2)
+    with tf.name_scope("PoolingLayer2"):
+        h_pool2 = max_pool_2x2(h_conv2)
+        tf.summary.histogram('pooling activations', h_pool2)
 
     # Fully connected layer 1 -- after 2 round of downsampling, our 32x32 image
     # is down to 8x8x64 feature maps -- maps this to 1024 features.
-    W_fc1 = weight_variable([8 * 8 * 64, 1024])
-    b_fc1 = bias_variable([1024])
-
-    h_pool2_flat = tf.reshape(h_pool2, [-1, 8*8*64])
-    h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+    h_fc1 = nn_layer(h_pool2, 8 * 8 * 64, 1024, "HiddenLayer1")
 
 
     # # Experiment with adding another fully connected layer 2, result shows adding another fully connected layer does not improve the accuary on predictions
@@ -73,14 +144,15 @@ def deepnn(x):
 
     # Dropout - controls the complexity of the model, prevents co-adaptation of
     # features.
-    keep_prob = tf.placeholder(tf.float32)
-    h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+    with tf.name_scope('dropout'):
+        keep_prob = tf.placeholder(tf.float32)
+        tf.summary.scalar('dropout_keep_probability', keep_prob)
+        h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
     # Map the 1024 features to 10 classes, one for each digit
-    W_fc2 = weight_variable([1024, 3])
-    b_fc2 = bias_variable([3])
+    y_conv = nn_layer2(h_fc1_drop, 1024, 3, "OutputLayer", act=tf.identity)
+    y_ = tf.placeholder(tf.float32, [None, 3])
 
-    y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
     return y_conv, keep_prob
 
 
@@ -124,13 +196,14 @@ def main(_):
             tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
         tf.summary.scalar('cross_entropy', cross_entropy)
 
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-    correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
+    with tf.name_scope('train'):
+        train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+
+
     with tf.name_scope('accuracy'):
+        correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         tf.summary.scalar('accuracy', accuracy)
-
-
 
 
     with tf.Session() as sess:
@@ -143,14 +216,16 @@ def main(_):
             batch = shape_set.next_batch_train(batch_size)
 
             if i % 100 == 0:
-                summary, train_accuracy = sess.run([merged, accuracy], feed_dict={
+                train_accuracy = sess.run(accuracy, feed_dict={
                     x: batch[0], y_: batch[1], keep_prob: 1.0})
-                train_writer.add_summary(summary, i)
                 print('step %d, training accuracy %g' % (i, train_accuracy))
-            train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.8})
+            summary, train_step_result = sess.run([merged, train_step], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.8})
+            train_writer.add_summary(summary, i)
 
-        print('test accuracy %g' % accuracy.eval(feed_dict={
-            x: shape_set.test[0], y_: shape_set.test[1], keep_prob: 1.0}))
+        test_summary, test_accuracy = sess.run([merged, accuracy], feed_dict={
+            x: shape_set.test[0], y_: shape_set.test[1], keep_prob: 1.0})
+        test_writer.add_summary(test_summary, 0)
+        print('test accuracy %g' % test_accuracy)
 
 #Convert the images to greyscale images as the shape is of one color and the background is of another
 def normalize(x):
@@ -312,7 +387,7 @@ if __name__ == '__main__':
     print("before" + str(datetime.datetime.now()))
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', type=str,
-                        default='/tmp/tensorflow/shapeset/logs',
+                        default='/Users/dalin.wang/tensorflow/shapeset/logs',
                         help='Directory for storing summary data')
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
