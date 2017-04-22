@@ -387,7 +387,7 @@ if __name__ == '__main__':
     print("before" + str(datetime.datetime.now()))
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', type=str,
-                        default='/Users/dalin.wang/tensorflow/shapeset/logs',
+                        default='/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs',
                         help='Directory for storing summary data')
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
