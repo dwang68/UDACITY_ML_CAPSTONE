@@ -386,7 +386,7 @@ class shape_set_input(object):
 if __name__ == '__main__':
     print("before" + str(datetime.datetime.now()))
     parser = argparse.ArgumentParser()
-    #set up local dir for storing event summaries
+    # set up local dir for storing event summaries
     parser.add_argument('--log_dir', type=str,
                         default='/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs',
                         help='Directory for storing summary data')
