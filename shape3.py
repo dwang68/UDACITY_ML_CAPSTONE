@@ -149,7 +149,7 @@ def deepnn(x):
         tf.summary.scalar('dropout_keep_probability', keep_prob)
         h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
-    # Map the 1024 features to 10 classes, one for each digit
+    # Map the 1024 features to 3 classes, one for each shape
     y_conv = nn_layer2(h_fc1_drop, 1024, 3, "OutputLayer", act=tf.identity)
     y_ = tf.placeholder(tf.float32, [None, 3])
 
