@@ -387,6 +387,11 @@ if __name__ == '__main__':
     print("before" + str(datetime.datetime.now()))
     parser = argparse.ArgumentParser()
     # set up local dir for storing event summaries
+    # to generate report in tensorboard on training session:
+    # tensorboard --logdir=/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs/train
+
+    # to generate report in tensorboard on test session:
+    # tensorboard --logdir=/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs/test
     parser.add_argument('--log_dir', type=str,
                         default='/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs',
                         help='Directory for storing summary data')
