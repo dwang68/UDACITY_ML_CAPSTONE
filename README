@@ -1,0 +1,16 @@
+Shape3 Recognition
+
+1. I used virtualenv to develop the project.
+To install virtualenv on Mac, please follow this page: (https://www.tensorflow.org/install/install_mac)
+
+2. To train the model, please naviagate to the sahpe_classifcation_tf folder
+Please the change log_dir path at the bottom of the shape3.py
+
+To run, type in "python shape3.py"
+
+3.
+to generate report in tensorboard on training session:
+tensorboard --logdir=/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs/train
+
+to generate report in tensorboard on test session:
+tensorboard --logdir=/Users/dalin.wang/Documents/ML_CapStone/shape_classification_tf/logs/test
