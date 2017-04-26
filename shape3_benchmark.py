@@ -127,7 +127,6 @@ def deepnn(x):
 
     # Map the 16*16*32 features to 3 classes, one for each shape
     y_conv = nn_layer(h_pool1, 16 * 16 * 32, 3, "OutputLayer", act=tf.identity)
-    y_ = tf.placeholder(tf.float32, [None, 3])
 
     return y_conv
 
@@ -176,6 +175,7 @@ def main(_):
         train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
 
 
+
     with tf.name_scope('accuracy'):
         correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
@@ -188,18 +188,37 @@ def main(_):
                                              sess.graph)
         test_writer = tf.summary.FileWriter(FLAGS.log_dir + '/test')
         sess.run(tf.global_variables_initializer())
-        for i in range(num_of_steps):
-            batch = shape_set.next_batch_train(batch_size)
+        # for i in range(num_of_steps):
+        #     batch = shape_set.next_batch_train(batch_size)
+        #
+        #     if i % 100 == 0:
+        #         train_accuracy = sess.run(accuracy, feed_dict={
+        #             x: batch[0], y_: batch[1]})
+        #         print('step %d, training accuracy %g' % (i, train_accuracy))
+        #     summary, train_step_result = sess.run([merged, train_step], feed_dict={x: batch[0], y_: batch[1]})
+        #     train_writer.add_summary(summary, i)
 
-            if i % 100 == 0:
-                train_accuracy = sess.run(accuracy, feed_dict={
-                    x: batch[0], y_: batch[1]})
-                print('step %d, training accuracy %g' % (i, train_accuracy))
-            summary, train_step_result = sess.run([merged, train_step], feed_dict={x: batch[0], y_: batch[1]})
-            train_writer.add_summary(summary, i)
-
-        test_summary, test_accuracy = sess.run([merged, accuracy], feed_dict={
+        test_summary, test_accuracy, y_conv_result, y_result = sess.run([merged, accuracy, tf.argmax(y_conv, 1), tf.argmax(y_, 1)], feed_dict={
             x: shape_set.test[0], y_: shape_set.test[1]})
+
+        confusion_matrix = np.zeros(shape=(3,3), dtype=int)
+
+        for i, v in enumerate(y_conv_result):
+            confusion_matrix[v, y_result[i]] = confusion_matrix[v, y_result[i]] + 1
+        #tf.summary('confusion_matrix', confusion_matrix)
+        print("confusion_matrix: {0}".format(confusion_matrix))
+        rectangle_precision = confusion_matrix[0,0] / confusion_matrix.sum(axis=1)[0]
+        rectangle_recall = confusion_matrix[0,0] / confusion_matrix.sum(axis=0)[0]
+        ellipse_precision  = confusion_matrix[1,1] / confusion_matrix.sum(axis=1)[1]
+        ellipse_recall = confusion_matrix[1,1] / confusion_matrix.sum(axis=0)[1]
+        triangle_precision = confusion_matrix[2,2] / confusion_matrix.sum(axis=1)[2]
+        triangle_recall = confusion_matrix[2,2] / confusion_matrix.sum(axis=0)[2]
+        print('rectangle_precision: {0}'.format(rectangle_precision))
+        print('rectangle_recall: {0}'.format(rectangle_recall))
+        print('ellipse_precision: {0}'.format(ellipse_precision))
+        print('ellipse_recall: {0}'.format(ellipse_recall))
+        print('triangle_precision: {0}'.format(triangle_precision))
+        print('triangle_recall: {0}'.format(triangle_recall))
         test_writer.add_summary(test_summary, 0)
         print('test accuracy %g' % test_accuracy)
 
@@ -235,6 +254,16 @@ class shape_set_input(object):
 
             #The first 1024 represents the gray tone of the pixel between 0 and 1 ( 32 * 32 )
             data_pixels_df_original = data_df.iloc[:, 0:1024].as_matrix()
+            shape_coordinates_df = data_df.iloc[:, 1026:1028].as_matrix()
+            shape_rotation_df = data_df.iloc[:, 1028].as_matrix()
+            shape_size_df = data_df.iloc[:, 1029].as_matrix()
+            shape_elogation_df = data_df.iloc[:, 1030].as_matrix()
+            print("dataset {0} has the following characteristics: ".format(file_name))
+            print("shape centroid average: {0}".format(np.average(shape_coordinates_df, axis=0)))
+            print("shape rotation average: {0}".format(np.average(shape_rotation_df)))
+            print("shape size average: {0}".format(np.average(shape_size_df)))
+            print("shape elogation average {0}".format(np.average(shape_elogation_df)))
+
             print(data_pixels_df_original.shape)
             np.apply_along_axis(normalize, 1, data_pixels_df_original)
 

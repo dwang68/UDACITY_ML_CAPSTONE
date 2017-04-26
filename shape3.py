@@ -151,7 +151,6 @@ def deepnn(x):
 
     # Map the 1024 features to 3 classes, one for each shape
     y_conv = nn_layer2(h_fc1_drop, 1024, 3, "OutputLayer", act=tf.identity)
-    y_ = tf.placeholder(tf.float32, [None, 3])
 
     return y_conv, keep_prob
 
@@ -222,10 +221,27 @@ def main(_):
             summary, train_step_result = sess.run([merged, train_step], feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.8})
             train_writer.add_summary(summary, i)
 
-        test_summary, test_accuracy = sess.run([merged, accuracy], feed_dict={
+        test_summary, test_accuracy, y_conv_result, y_result = sess.run([merged, accuracy, tf.argmax(y_conv, 1), tf.argmax(y_, 1)], feed_dict={
             x: shape_set.test[0], y_: shape_set.test[1], keep_prob: 1.0})
         test_writer.add_summary(test_summary, 0)
+        confusion_matrix = np.zeros(shape=(3,3), dtype=int)
         print('test accuracy %g' % test_accuracy)
+        for i, v in enumerate(y_conv_result):
+            confusion_matrix[v, y_result[i]] = confusion_matrix[v, y_result[i]] + 1
+        #tf.summary('confusion_matrix', confusion_matrix)
+        print("confusion_matrix: {0}".format(confusion_matrix))
+        rectangle_precision = confusion_matrix[0,0] / confusion_matrix.sum(axis=1)[0]
+        rectangle_recall = confusion_matrix[0,0] / confusion_matrix.sum(axis=0)[0]
+        ellipse_precision  = confusion_matrix[1,1] / confusion_matrix.sum(axis=1)[1]
+        ellipse_recall = confusion_matrix[1,1] / confusion_matrix.sum(axis=0)[1]
+        triangle_precision = confusion_matrix[2,2] / confusion_matrix.sum(axis=1)[2]
+        triangle_recall = confusion_matrix[2,2] / confusion_matrix.sum(axis=0)[2]
+        print('rectangle_precision: {0}'.format(rectangle_precision))
+        print('rectangle_recall: {0}'.format(rectangle_recall))
+        print('ellipse_precision: {0}'.format(ellipse_precision))
+        print('ellipse_recall: {0}'.format(ellipse_recall))
+        print('triangle_precision: {0}'.format(triangle_precision))
+        print('triangle_recall: {0}'.format(triangle_recall))
 
 #Convert the images to greyscale images as the shape is of one color and the background is of another
 def normalize(x):
